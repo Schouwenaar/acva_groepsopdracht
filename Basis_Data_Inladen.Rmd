@@ -1,0 +1,241 @@
+---
+title: "De basis: data inladen en bekijken in R"
+author: "Naam en studentnummer hier"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+# Voorbereiding
+
+Open altijd eerst het project door te dubbelklikken op `RBasisDataInladen.Rproj`. R weet dan in welke map je werkt en kan de bestanden in de map `data/` vinden.
+
+## Pakketten installeren
+
+Dit doe je één keer per project. Kopieer de regel hieronder naar de Console (linksonder in RStudio) en druk op Enter.
+
+```{r pakketten_installeren, eval=FALSE}
+install.packages(c("tidyverse", "readxl", "rmarkdown"))
+```
+
+## Pakketten laden
+
+Dit doe je elke keer dat je R opnieuw opstart.
+
+```{r pakketten, message=FALSE}
+library(tidyverse)
+library(readxl)
+```
+
+# Deel 1 - Waar staat mijn data?
+
+## 1.1 De werkmap
+
+R zoekt bestanden vanuit de werkmap (*working directory*). Met `getwd()` zie je welke map dat is.
+
+```{r werkmap}
+getwd()
+```
+
+## 1.2 Welke bestanden zijn er?
+
+Met `list.files()` zie je welke bestanden in een map staan.
+
+```{r bestanden}
+list.files("data")
+```
+
+Het pad `"data/kittens.csv"` betekent: het bestand `kittens.csv` in de map `data`. Dit heet een relatief pad. Het werkt op elke computer, zolang het project open staat.
+
+# Deel 2 - Data inladen
+
+Bij inladen gebeuren steeds twee dingen: een functie leest het bestand, en met het pijltje `<-` bewaar je het resultaat onder een naam die je zelf kiest.
+
+## 2.1 Een csv-bestand (komma's)
+
+```{r csv_inladen}
+kittens <- read_csv("data/kittens.csv")
+```
+
+R meldt hoeveel rijen en kolommen er zijn ingelezen en welk type elke kolom heeft: `dbl` is een getal, `chr` is tekst.
+
+Rechtsboven in RStudio, onder *Environment*, staat nu `kittens`.
+
+## 2.2 Een csv-bestand uit Nederlandse Excel (puntkomma's)
+
+Nederlandse bestanden gebruiken vaak een puntkomma tussen de kolommen en een komma in decimale getallen (0,61). Daarvoor bestaat `read_csv2()`.
+
+```{r csv2_inladen}
+kittens_nl <- read_csv2("data/kittens_puntkomma.csv")
+```
+
+Twijfel je welke je nodig hebt? Open het bestand in een teksteditor (in RStudio: klik op het bestand onder *Files* en kies *View File*) en kijk welk teken tussen de kolommen staat.
+
+## 2.3 Een Excel-bestand
+
+```{r excel_inladen}
+kittens_excel <- read_excel("data/kittens.xlsx")
+```
+
+Een Excel-bestand kan meerdere tabbladen hebben. Met `excel_sheets()` zie je welke, met `sheet =` kies je er één.
+
+```{r excel_tabbladen}
+excel_sheets("data/kittens.xlsx")
+
+toelichting <- read_excel("data/kittens.xlsx", sheet = "toelichting")
+toelichting
+```
+
+## 2.4 Een rds-bestand
+
+Een rds-bestand is het eigen bestandsformaat van R.
+
+```{r rds_inladen}
+kittens_rds <- read_rds("data/kittens.rds")
+```
+
+## 2.5 Rechtstreeks vanaf een website
+
+Staat een csv-bestand online, dan kun je de link gebruiken in plaats van het pad.
+
+```{r url_inladen, eval=FALSE}
+kittens_online <- read_csv("https://raw.githubusercontent.com/Schouwenaar/ProgrammingForEcon/main/data/kittens.csv")
+```
+
+# Deel 3 - Data bekijken
+
+## 3.1 De hele tabel
+
+Typ de naam van de dataset om de eerste rijen te zien.
+
+```{r tabel}
+kittens
+```
+
+In RStudio kun je de data ook als spreadsheet openen. Typ dit in de Console:
+
+```{r view, eval=FALSE}
+View(kittens)
+```
+
+## 3.2 De eerste en laatste rijen
+
+```{r head_tail}
+head(kittens)
+
+tail(kittens, n = 3)
+```
+
+## 3.3 Hoe groot is de dataset?
+
+```{r afmetingen}
+nrow(kittens)
+ncol(kittens)
+dim(kittens)
+```
+
+## 3.4 Welke variabelen zijn er?
+
+```{r namen}
+names(kittens)
+```
+
+`glimpse()` laat per variabele het type en de eerste waarden zien.
+
+```{r glimpse}
+glimpse(kittens)
+```
+
+## 3.5 Een samenvatting
+
+`summary()` geeft per variabele het minimum, het gemiddelde, de mediaan en het maximum.
+
+```{r summary}
+summary(kittens)
+```
+
+## 3.6 Eén variabele bekijken
+
+Met het dollarteken kies je één kolom uit de dataset.
+
+```{r kolom}
+kittens$number_of_kittens
+
+mean(kittens$number_of_kittens)
+```
+
+Bij een tekstvariabele wil je meestal weten welke waarden voorkomen en hoe vaak.
+
+```{r tellen}
+unique(kittens$provincie)
+
+count(kittens, provincie)
+```
+
+## 3.7 Ontbreken er waarden?
+
+In R heet een ontbrekende waarde `NA`. Zo tel je ze per variabele:
+
+```{r missende_waarden}
+colSums(is.na(kittens))
+```
+
+# Deel 4 - Als het misgaat
+
+## 4.1 Het bestand wordt niet gevonden
+
+Bij de melding `'...' does not exist in current working directory` klopt het pad of de bestandsnaam niet. Controleer:
+
+-   Staat het project open (rechtsboven in RStudio staat de projectnaam)?
+
+-   Klopt de spelling, inclusief hoofdletters en `.csv`?
+
+-   Staat het bestand in de map die `list.files("data")` laat zien?
+
+## 4.2 Alles staat in één kolom
+
+Dan is het verkeerde scheidingsteken gebruikt. Het bestand met puntkomma's inladen met `read_csv()` geeft één kolom en waarschuwingen:
+
+```{r verkeerd_scheidingsteken, eval=FALSE}
+fout <- read_csv("data/kittens_puntkomma.csv")
+ncol(fout)
+```
+
+Gebruik dan `read_csv2()`.
+
+## 4.3 Getallen worden als tekst gelezen
+
+Staat er `chr` bij een kolom met getallen, dan ziet R ze als tekst. Vaak komt dat door decimale komma's. Ook hier is `read_csv2()` de oplossing.
+
+# Deel 5 - Zelf proberen
+
+In de map `data/` staat ook `midwest.csv`, met gegevens over county's in het Midwesten van de Verenigde Staten.
+
+## 5.1 Laad `midwest.csv` in en geef de dataset een naam
+
+```{r oefening_inladen}
+
+```
+
+## 5.2 Hoeveel rijen en kolommen heeft de dataset?
+
+```{r oefening_afmetingen}
+
+```
+
+## 5.3 Welke variabelen zijn tekst en welke zijn getallen?
+
+```{r oefening_types}
+
+```
+
+## 5.4 Welke staten komen voor, en hoeveel county's per staat?
+
+```{r oefening_tellen}
+
+```
+
+## 5.5 Wat is het gemiddelde van `percollege`?
+
+```{r oefening_gemiddelde}
+
+```
