@@ -1,5 +1,7 @@
 # De basis: data inladen en bekijken in R
 
+iets aanpassen, test
+
 Een eerste kennismaking met data in R: bestanden inladen (csv, Excel, rds) en bekijken wat erin zit.
 
 ## Aan de slag
