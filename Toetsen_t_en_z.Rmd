@@ -18,13 +18,13 @@ library(tidyverse)
 
 Dinsdag deden we een significantietoets in vijf stappen. Vandaag doen we precies hetzelfde in R.
 
-| Stap | Wat doe je?                  | Vandaag in R                         |
-|------|------------------------------|--------------------------------------|
-| 1    | Aannames controleren         | `glimpse()`, `summarise()`, `count()`, `ggplot()` |
-| 2    | Hypothesen opstellen         | zelf nadenken                        |
-| 3    | Toetsingsgrootheid berekenen | eerst met de hand, dan `t.test()` en `prop.test()` |
-| 4    | P-waarde bepalen             | `pt()` en `pnorm()`                  |
-| 5    | Conclusie in de context      | zelf opschrijven                     |
+| Stap | Wat doe je? | Vandaag in R |
+|----|----|----|
+| 1 | Aannames controleren | `glimpse()`, `summarise()`, `count()`, `ggplot()` |
+| 2 | Hypothesen opstellen | zelf nadenken |
+| 3 | Toetsingsgrootheid berekenen | eerst met de hand, dan `t.test()` en `prop.test()` |
+| 4 | P-waarde bepalen | `pt()` en `pnorm()` |
+| 5 | Conclusie in de context | zelf opschrijven |
 
 # Deel 1 - De data
 
@@ -426,10 +426,10 @@ Niet verwerpen betekent niet dat $H_0$ bewezen is. De data passen bij 80%, maar 
 
 ## 4.1 Wanneer welke?
 
-| Variabele                 | Parameter | Toets   | Verdeling                    | In R          |
-|---------------------------|-----------|---------|------------------------------|---------------|
-| Categorisch (ja/nee)      | $p$       | z-toets | standaardnormaal             | `prop.test()` |
-| Kwantitatief (een getal)  | $\mu$     | t-toets | t-verdeling met $df = n - 1$ | `t.test()`    |
+| Variabele | Parameter | Toets | Verdeling | In R |
+|----|----|----|----|----|
+| Categorisch (ja/nee) | $p$ | z-toets | standaardnormaal | `prop.test()` |
+| Kwantitatief (een getal) | $\mu$ | t-toets | t-verdeling met $df = n - 1$ | `t.test()` |
 
 ## 4.2 Waarom een andere verdeling?
 
