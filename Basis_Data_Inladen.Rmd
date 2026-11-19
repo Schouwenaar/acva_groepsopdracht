@@ -14,7 +14,7 @@ Open altijd eerst het project door te dubbelklikken op `RBasisDataInladen.Rproj`
 Dit doe je één keer per project. Kopieer de regel hieronder naar de Console (linksonder in RStudio) en druk op Enter.
 
 ```{r pakketten_installeren, eval=FALSE}
-install.packages(c("tidyverse", "readxl", "rmarkdown"))
+#install.packages(c("tidyverse", "readxl", "rmarkdown"))
 ```
 
 ## Pakketten laden
