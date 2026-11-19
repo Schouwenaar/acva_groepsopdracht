@@ -19,7 +19,7 @@ library(tidyverse)
 Dinsdag deden we een significantietoets in vijf stappen. Vandaag doen we precies hetzelfde in R.
 
 | Stap | Wat doe je? | Vandaag in R |
-|----|----|----|
+|-----------------|------------------------|-------------------------------|
 | 1 | Aannames controleren | `glimpse()`, `summarise()`, `count()`, `ggplot()` |
 | 2 | Hypothesen opstellen | zelf nadenken |
 | 3 | Toetsingsgrootheid berekenen | eerst met de hand, dan `t.test()` en `prop.test()` |
@@ -67,6 +67,8 @@ kittens_2023 <- kittens |>
   filter(year == 2023)
 
 kittens_2023
+
+unique(kittens$provincie)
 ```
 
 Nu is elke rij één provincie: 12 waarnemingen.
@@ -111,7 +113,7 @@ Eerst de beschrijvende maten.
 ```{r beschrijvende_maten}
 kittens_2023 |>
   summarise(
-    n          = n(),
+    aantal_kittens          = n(),
     gemiddelde = mean(number_of_kittens),
     mediaan    = median(number_of_kittens),
     sd         = sd(number_of_kittens),
@@ -128,6 +130,9 @@ Dan de vorm: een histogram.
 ggplot(kittens_2023, aes(x = number_of_kittens)) +
   geom_histogram(binwidth = 50, boundary = 0, fill = "#0A4A8F", color = "white") +
   labs(x = "Aantal kittens in 2023", y = "Aantal provincies")
+
+ggplot(kittens_2023, aes(x = number_of_kittens)) +
+  geom_histogram()
 ```
 
 En uitschieters: een boxplot.
@@ -242,7 +247,7 @@ Ligt 100 in het betrouwbaarheidsinterval?
 
 $P = 0{,}020$ is kleiner dan $\alpha = 0{,}05$: we verwerpen $H_0$.
 
-> In 2023 werden per provincie gemiddeld meer kittens geboren (M = 166,9, SD = 85,3) dan de 100 van tien jaar geleden, t(11) = 2,72, p = 0,020.
+> In 2023 werden per provincie gemiddeld meer kittens geboren (M = 166,9, SD = 85,3) dan de 100 van tien jaar eerder, t(11) = 2,72, p = 0,020.
 
 ## 2.8 Waarom werkt dit? Een simulatie
 
@@ -325,11 +330,15 @@ aantal_ja <- sum(kittens_2023$number_extra_cute_kittens)
 ```
 
 ```{r staafdiagram}
-tibble(extra_schattig = c("ja", "nee"),
-       aantal = c(aantal_ja, n - aantal_ja)) |>
-  ggplot(aes(x = extra_schattig, y = aantal)) +
+tibble(extra_schattig = c("ja", 
+                          "nee"),
+       aantal = c(aantal_ja, 
+                  n - aantal_ja)) |>
+  ggplot(aes(x = extra_schattig, 
+             y = aantal)) +
   geom_col(fill = "#0A4A8F") +
-  labs(x = "Extra schattig", y = "Aantal kittens")
+  labs(x = "Extra schattig", 
+       y = "Aantal kittens")
 ```
 
 ### Aanname 2: aselecte steekproef
@@ -427,7 +436,7 @@ Niet verwerpen betekent niet dat $H_0$ bewezen is. De data passen bij 80%, maar 
 ## 4.1 Wanneer welke?
 
 | Variabele | Parameter | Toets | Verdeling | In R |
-|----|----|----|----|----|
+|---------------|---------------|---------------|---------------|---------------|
 | Categorisch (ja/nee) | $p$ | z-toets | standaardnormaal | `prop.test()` |
 | Kwantitatief (een getal) | $\mu$ | t-toets | t-verdeling met $df = n - 1$ | `t.test()` |
 
@@ -469,7 +478,7 @@ Een journalist schrijft: "In een gemiddelde county heeft 18% van de volwassenen 
 ### 5.1 Laad `midwest.csv` in en bekijk de variabele `percollege`
 
 ```{r oefening_inladen}
-
+midwest <- midwest
 ```
 
 ### 5.2 Schrijf de hypothesen op
@@ -481,13 +490,21 @@ $H_a$:
 ### 5.3 Bereken n, gemiddelde, mediaan en standaarddeviatie van `percollege`
 
 ```{r oefening_beschrijvend}
-
+midwest |> summarise(
+  aantal = n(),
+  gemiddelde = mean(percollege),
+  mediaan = median(percollege),
+  standaarddeviatie = sd(percollege)
+)
 ```
 
 ### 5.4 Maak een histogram en een boxplot van `percollege`
 
 ```{r oefening_grafieken}
+hist(midwest$percollege)
 
+ggplot(midwest, aes(x = percollege)) +
+  geom_boxplot()
 ```
 
 ### 5.5 Mag de t-toets? Leg uit met je antwoorden op 5.3 en 5.4
@@ -497,7 +514,7 @@ Antwoord:
 ### 5.6 Bereken t met de hand en controleer met `t.test()`
 
 ```{r oefening_t}
-
+t.test(midwest$percollege, mu = 18)
 ```
 
 ### 5.7 Schrijf de conclusie in de context
@@ -511,18 +528,27 @@ Een beleidsmaker beweert: "40% van de county's ligt in een stedelijk gebied." De
 ### 5.8 Tel hoeveel county's wel en niet in een stedelijk gebied liggen
 
 ```{r oefening_tellen}
-
+midwest$inmetro |> 
+  as.factor() |>
+  summary()
 ```
 
 ### 5.9 Controleer of de steekproef groot genoeg is
 
 ```{r oefening_groot_genoeg}
+midwest |> filter(inmetro == 1) |> nrow() > 15
 
+midwest |> filter(inmetro == 0) |> nrow() > 15
 ```
 
 ### 5.10 Bereken z met de hand en controleer met `prop.test()`
 
 ```{r oefening_z}
+aantal_ja <- sum(midwest$inmetro)   # 150
+n         <- nrow(midwest)          # 437
+
+prop.test(x = aantal_ja, n = n, p = 0.40, correct = FALSE)
+
 
 ```
 
