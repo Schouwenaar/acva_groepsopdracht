@@ -1,0 +1,545 @@
+---
+title: "Toetsen in R: de t-toets en de z-toets"
+author: "Naam en studentnummer hier"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+# Voorbereiding
+
+Open eerst het project door te dubbelklikken op `RBasisDataInladen.Rproj`. Voer daarna de blokken code één voor één uit met het groene pijltje.
+
+```{r pakketten, message=FALSE}
+library(tidyverse)
+```
+
+Dinsdag deden we een significantietoets in vijf stappen. Vandaag doen we precies hetzelfde in R.
+
+| Stap | Wat doe je?                  | Vandaag in R                         |
+|------|------------------------------|--------------------------------------|
+| 1    | Aannames controleren         | `glimpse()`, `summarise()`, `count()`, `ggplot()` |
+| 2    | Hypothesen opstellen         | zelf nadenken                        |
+| 3    | Toetsingsgrootheid berekenen | eerst met de hand, dan `t.test()` en `prop.test()` |
+| 4    | P-waarde bepalen             | `pt()` en `pnorm()`                  |
+| 5    | Conclusie in de context      | zelf opschrijven                     |
+
+# Deel 1 - De data
+
+## 1.1 Inladen
+
+De kittens van vorige week: het aantal geboren kittens per provincie per jaar.
+
+```{r inladen}
+kittens <- read_csv("data/kittens.csv")
+```
+
+## 1.2 Bekijken
+
+Net als vorige week: eerst kijken wat erin zit.
+
+```{r bekijken}
+glimpse(kittens)
+```
+
+```{r samenvatting}
+summary(kittens)
+```
+
+## 1.3 Ontbreken er waarden?
+
+```{r missende_waarden}
+colSums(is.na(kittens))
+```
+
+## 1.4 Hoe vaak komt elke provincie voor?
+
+```{r tellen}
+count(kittens, provincie)
+```
+
+Elke provincie staat er zes keer in: één rij per jaar. Die zes rijen horen bij elkaar. Voor een toets willen we losse waarnemingen, dus we kiezen één jaar.
+
+```{r filteren}
+kittens_2023 <- kittens |>
+  filter(year == 2023)
+
+kittens_2023
+```
+
+Nu is elke rij één provincie: 12 waarnemingen.
+
+# Deel 2 - De t-toets voor één gemiddelde
+
+## 2.1 De vraag
+
+Tien jaar geleden werden er per provincie gemiddeld 100 kittens per jaar geboren. Is dat in 2023 anders?
+
+## 2.2 Stap 2: de hypothesen
+
+- $H_0: \mu = 100$
+- $H_a: \mu \neq 100$ (tweezijdig)
+
+$\mu$ is het gemiddelde aantal kittens per provincie per jaar.
+
+```{r h0_waarde}
+mu_0 <- 100
+```
+
+## 2.3 Stap 1: de aannames
+
+De t-toets heeft drie aannames. We lopen ze één voor één na.
+
+### Aanname 1: de variabele is kwantitatief
+
+```{r aanname_kwantitatief}
+class(kittens_2023$number_of_kittens)
+```
+
+`numeric` betekent: R ziet een getal. Een aantal kittens is kwantitatief.
+
+### Aanname 2: aselecte steekproef
+
+Dit kun je **niet** aan de data zien. Je moet weten hoe de data verzameld zijn. Vandaag doen we alsof 2023 een willekeurig jaar is. In opdracht C kom je hierop terug.
+
+### Aanname 3: de populatie is ongeveer normaal verdeeld
+
+Eerst de beschrijvende maten.
+
+```{r beschrijvende_maten}
+kittens_2023 |>
+  summarise(
+    n          = n(),
+    gemiddelde = mean(number_of_kittens),
+    mediaan    = median(number_of_kittens),
+    sd         = sd(number_of_kittens),
+    minimum    = min(number_of_kittens),
+    maximum    = max(number_of_kittens)
+  )
+```
+
+Liggen gemiddelde en mediaan dicht bij elkaar? Dan is de verdeling ongeveer symmetrisch.
+
+Dan de vorm: een histogram.
+
+```{r histogram}
+ggplot(kittens_2023, aes(x = number_of_kittens)) +
+  geom_histogram(binwidth = 50, boundary = 0, fill = "#0A4A8F", color = "white") +
+  labs(x = "Aantal kittens in 2023", y = "Aantal provincies")
+```
+
+En uitschieters: een boxplot.
+
+```{r boxplot}
+ggplot(kittens_2023, aes(x = number_of_kittens)) +
+  geom_boxplot(fill = "#B8D0EA") +
+  labs(x = "Aantal kittens in 2023")
+```
+
+Welke provincies hebben de meeste kittens?
+
+```{r hoogste_waarden}
+kittens_2023 |>
+  arrange(desc(number_of_kittens)) |>
+  head(3)
+```
+
+### Oordeel over de aannames
+
+- Het gemiddelde ligt boven de mediaan: een staart naar rechts.
+- De boxplot laat één uitschieter zien: Noord-Brabant. Een geloofwaardige waarde, geen typefout.
+- $n = 12$ is klein. Daarom is deze controle hier echt nodig.
+
+De tweezijdige t-toets kan tegen een beetje scheefheid, maar is gevoelig voor extreme uitschieters. Dit is een twijfelgeval: we voeren de toets uit en blijven voorzichtig met de conclusie.
+
+## 2.4 Stap 3: de toetsingsgrootheid, met de hand
+
+$$t = \frac{\bar{x} - \mu_0}{se} \qquad \text{met} \qquad se = \frac{s}{\sqrt{n}}$$
+
+Eerst de drie ingrediënten.
+
+```{r t_ingredienten}
+n        <- nrow(kittens_2023)
+x_streep <- mean(kittens_2023$number_of_kittens)
+s        <- sd(kittens_2023$number_of_kittens)
+
+n
+x_streep
+s
+```
+
+Dan de standaardfout.
+
+```{r t_standaardfout}
+se <- s / sqrt(n)
+se
+```
+
+En de toetsingsgrootheid.
+
+```{r t_waarde}
+t_waarde <- (x_streep - mu_0) / se
+t_waarde
+```
+
+Het steekproefgemiddelde ligt 2,72 standaardfouten boven de waarde uit $H_0$.
+
+## 2.5 Stap 4: de P-waarde
+
+Hoe waarschijnlijk is een t van 2,72 of extremer, als $H_0$ waar is?
+
+`pt()` geeft de oppervlakte **links** van een waarde in de t-verdeling.
+
+```{r t_p_links}
+df <- n - 1
+pt(t_waarde, df = df)
+```
+
+Wij willen de staart **rechts**, en omdat we tweezijdig toetsen ook de staart links.
+
+```{r t_p_waarde}
+p_waarde <- 2 * (1 - pt(t_waarde, df = df))
+p_waarde
+```
+
+### Het plaatje erbij
+
+De code hieronder hoef je niet te kennen. Kijk naar het plaatje.
+
+```{r t_plaatje}
+ggplot() +
+  xlim(-5, 5) +
+  stat_function(fun = dt, args = list(df = df), geom = "area",
+                xlim = c(t_waarde, 5), fill = "#A6192E") +
+  stat_function(fun = dt, args = list(df = df), geom = "area",
+                xlim = c(-5, -t_waarde), fill = "#A6192E") +
+  stat_function(fun = dt, args = list(df = df), linewidth = 1, color = "#062E5C") +
+  geom_vline(xintercept = t_waarde, linetype = "dashed") +
+  labs(x = "t", y = NULL,
+       title = "Als H0 waar is: de t-verdeling met df = 11",
+       subtitle = "Rood = de P-waarde, stippellijn = onze t")
+```
+
+## 2.6 Alles in één keer: `t.test()`
+
+```{r t_test}
+t.test(kittens_2023$number_of_kittens, mu = 100)
+```
+
+Zoek in de uitvoer:
+
+- `t`: de toetsingsgrootheid (dezelfde als met de hand)
+- `df`: de vrijheidsgraden, $n - 1$
+- `p-value`: de P-waarde
+- `95 percent confidence interval`: het betrouwbaarheidsinterval uit H8
+- `mean of x`: het steekproefgemiddelde
+
+Ligt 100 in het betrouwbaarheidsinterval?
+
+## 2.7 Stap 5: de conclusie
+
+$P = 0{,}020$ is kleiner dan $\alpha = 0{,}05$: we verwerpen $H_0$.
+
+> In 2023 werden per provincie gemiddeld meer kittens geboren (M = 166,9, SD = 85,3) dan de 100 van tien jaar geleden, t(11) = 2,72, p = 0,020.
+
+## 2.8 Waarom werkt dit? Een simulatie
+
+We bouwen een wereld waarin $H_0$ **waar** is: een populatie met een gemiddelde van precies 100. Daaruit trekken we één steekproef van 12.
+
+```{r simulatie_een}
+set.seed(2026)
+nep_steekproef <- rnorm(12, mean = 100, sd = 85)
+mean(nep_steekproef)
+```
+
+Het gemiddelde is niet precies 100. Dat is toeval. Hoe ver wijkt het af, in standaardfouten?
+
+```{r simulatie_een_t}
+(mean(nep_steekproef) - 100) / (sd(nep_steekproef) / sqrt(12))
+```
+
+Nu doen we dit 10.000 keer en bewaren elke keer de t-waarde.
+
+```{r simulatie_veel}
+t_waarden <- replicate(10000, {
+  nep <- rnorm(12, mean = 100, sd = 85)
+  (mean(nep) - 100) / (sd(nep) / sqrt(12))
+})
+```
+
+```{r simulatie_histogram}
+ggplot(tibble(t = t_waarden), aes(x = t)) +
+  geom_histogram(binwidth = 0.25, fill = "#B8D0EA", color = "white") +
+  geom_vline(xintercept = c(-t_waarde, t_waarde), color = "#A6192E", linewidth = 1) +
+  labs(x = "t", y = "Aantal steekproeven",
+       title = "10.000 steekproeven uit een wereld waarin H0 waar is",
+       subtitle = "Rode lijnen = onze t en het spiegelbeeld")
+```
+
+Hoe vaak kwam toeval minstens zo ver als wij?
+
+```{r simulatie_p}
+mean(abs(t_waarden) >= t_waarde)
+```
+
+Vergelijk dit getal met de P-waarde uit `t.test()`.
+
+# Deel 3 - De z-toets voor één proportie
+
+## 3.1 De vraag
+
+Een fokker beweert: 80% van alle kittens is extra schattig. Klopt dat voor de kittens van 2023?
+
+Let op: de eenheid verandert. Bij de t-toets was elke waarneming een provincie. Nu is elke waarneming één kitten.
+
+## 3.2 Stap 2: de hypothesen
+
+- $H_0: p = 0{,}80$
+- $H_a: p \neq 0{,}80$ (tweezijdig)
+
+$p$ is de proportie van **alle** kittens die extra schattig is.
+
+```{r p0_waarde}
+p_0 <- 0.80
+```
+
+## 3.3 Stap 1: de aannames
+
+### Aanname 1: de variabele is categorisch
+
+Elk kitten is extra schattig: ja of nee. De data zijn al geteld per provincie, dus we tellen de provincies bij elkaar op.
+
+```{r aanname_categorisch}
+kittens_2023 |>
+  summarise(
+    kittens       = sum(number_of_kittens),
+    extra_schattig = sum(number_extra_cute_kittens)
+  )
+```
+
+```{r z_aantallen}
+n         <- sum(kittens_2023$number_of_kittens)
+aantal_ja <- sum(kittens_2023$number_extra_cute_kittens)
+```
+
+```{r staafdiagram}
+tibble(extra_schattig = c("ja", "nee"),
+       aantal = c(aantal_ja, n - aantal_ja)) |>
+  ggplot(aes(x = extra_schattig, y = aantal)) +
+  geom_col(fill = "#0A4A8F") +
+  labs(x = "Extra schattig", y = "Aantal kittens")
+```
+
+### Aanname 2: aselecte steekproef
+
+Ook hier: niet te zien aan de data. We doen alsof de kittens van 2023 een aselecte steekproef zijn van alle kittens.
+
+### Aanname 3: de steekproef is groot genoeg
+
+Je verwacht onder $H_0$ minstens 15 keer ja en minstens 15 keer nee.
+
+```{r aanname_groot_genoeg}
+n * p_0
+n * (1 - p_0)
+```
+
+Ruim boven de 15. Let op: we rekenen met $p_0$, niet met $\hat{p}$.
+
+## 3.4 Stap 3: de toetsingsgrootheid, met de hand
+
+$$z = \frac{\hat{p} - p_0}{se_0} \qquad \text{met} \qquad se_0 = \sqrt{\frac{p_0(1 - p_0)}{n}}$$
+
+Eerst de steekproefproportie.
+
+```{r z_proportie}
+p_dakje <- aantal_ja / n
+p_dakje
+```
+
+Dan de standaardfout onder $H_0$.
+
+```{r z_standaardfout}
+se_0 <- sqrt(p_0 * (1 - p_0) / n)
+se_0
+```
+
+En de toetsingsgrootheid.
+
+```{r z_waarde}
+z_waarde <- (p_dakje - p_0) / se_0
+z_waarde
+```
+
+## 3.5 Stap 4: de P-waarde
+
+Nu de standaardnormale verdeling: `pnorm()` in plaats van `pt()`.
+
+```{r z_p_waarde}
+p_waarde_z <- 2 * (1 - pnorm(z_waarde))
+p_waarde_z
+```
+
+```{r z_plaatje}
+ggplot() +
+  xlim(-4, 4) +
+  stat_function(fun = dnorm, geom = "area",
+                xlim = c(z_waarde, 4), fill = "#A6192E") +
+  stat_function(fun = dnorm, geom = "area",
+                xlim = c(-4, -z_waarde), fill = "#A6192E") +
+  stat_function(fun = dnorm, linewidth = 1, color = "#062E5C") +
+  geom_vline(xintercept = z_waarde, linetype = "dashed") +
+  labs(x = "z", y = NULL,
+       title = "Als H0 waar is: de standaardnormale verdeling",
+       subtitle = "Rood = de P-waarde, stippellijn = onze z")
+```
+
+Vergelijk dit plaatje met dat van de t-toets. Wat valt op aan het rode gebied?
+
+## 3.6 Alles in één keer: `prop.test()`
+
+```{r prop_test}
+prop.test(x = aantal_ja, n = n, p = 0.80, correct = FALSE)
+```
+
+Twee dingen om te weten:
+
+- `correct = FALSE` zet een correctie uit, zodat R hetzelfde rekent als het boek.
+- R toont geen z maar `X-squared`. Dat is $z^2$.
+
+```{r prop_test_z}
+z_waarde^2
+```
+
+De P-waarde is dezelfde als met de hand.
+
+## 3.7 Stap 5: de conclusie
+
+$P = 0{,}27$ is groter dan $\alpha = 0{,}05$: we verwerpen $H_0$ niet.
+
+> Van de kittens in 2023 was 81% extra schattig. Dat wijkt niet significant af van 80%, z = 1,09, p = 0,27.
+
+Niet verwerpen betekent niet dat $H_0$ bewezen is. De data passen bij 80%, maar ook bij 79% of 82%.
+
+# Deel 4 - z of t?
+
+## 4.1 Wanneer welke?
+
+| Variabele                 | Parameter | Toets   | Verdeling                    | In R          |
+|---------------------------|-----------|---------|------------------------------|---------------|
+| Categorisch (ja/nee)      | $p$       | z-toets | standaardnormaal             | `prop.test()` |
+| Kwantitatief (een getal)  | $\mu$     | t-toets | t-verdeling met $df = n - 1$ | `t.test()`    |
+
+## 4.2 Waarom een andere verdeling?
+
+Bij een gemiddelde schatten we $\sigma$ met $s$. Dat geeft extra onzekerheid: de t-verdeling heeft dikkere staarten.
+
+```{r z_en_t}
+ggplot() +
+  xlim(-4, 4) +
+  stat_function(fun = dnorm, aes(color = "normaal (z)"), linewidth = 1) +
+  stat_function(fun = dt, args = list(df = 3),  aes(color = "t met df = 3"),  linewidth = 1) +
+  stat_function(fun = dt, args = list(df = 11), aes(color = "t met df = 11"), linewidth = 1) +
+  scale_color_manual(values = c("normaal (z)" = "#062E5C",
+                                "t met df = 3" = "#A6192E",
+                                "t met df = 11" = "#6FA3DC")) +
+  labs(x = NULL, y = NULL, color = NULL)
+```
+
+Hoe groter de steekproef, hoe meer de t-verdeling op de normale verdeling lijkt.
+
+```{r kritieke_waarden}
+qnorm(0.975)
+qt(0.975, df = 3)
+qt(0.975, df = 11)
+qt(0.975, df = 119)
+```
+
+Met onze 12 provincies moet t voorbij 2,20 liggen in plaats van 1,96.
+
+# Deel 5 - Zelf proberen
+
+Gebruik `midwest.csv` uit de map `data/`: county's in het Midwesten van de Verenigde Staten.
+
+## Opdracht A: een t-toets
+
+Een journalist schrijft: "In een gemiddelde county heeft 18% van de volwassenen een collegediploma." De variabele `percollege` is het percentage volwassenen met een collegediploma.
+
+### 5.1 Laad `midwest.csv` in en bekijk de variabele `percollege`
+
+```{r oefening_inladen}
+
+```
+
+### 5.2 Schrijf de hypothesen op
+
+$H_0$:
+
+$H_a$:
+
+### 5.3 Bereken n, gemiddelde, mediaan en standaarddeviatie van `percollege`
+
+```{r oefening_beschrijvend}
+
+```
+
+### 5.4 Maak een histogram en een boxplot van `percollege`
+
+```{r oefening_grafieken}
+
+```
+
+### 5.5 Mag de t-toets? Leg uit met je antwoorden op 5.3 en 5.4
+
+Antwoord:
+
+### 5.6 Bereken t met de hand en controleer met `t.test()`
+
+```{r oefening_t}
+
+```
+
+### 5.7 Schrijf de conclusie in de context
+
+Antwoord:
+
+## Opdracht B: een z-toets
+
+Een beleidsmaker beweert: "40% van de county's ligt in een stedelijk gebied." De variabele `inmetro` is 1 als een county in een stedelijk gebied ligt en 0 als dat niet zo is.
+
+### 5.8 Tel hoeveel county's wel en niet in een stedelijk gebied liggen
+
+```{r oefening_tellen}
+
+```
+
+### 5.9 Controleer of de steekproef groot genoeg is
+
+```{r oefening_groot_genoeg}
+
+```
+
+### 5.10 Bereken z met de hand en controleer met `prop.test()`
+
+```{r oefening_z}
+
+```
+
+### 5.11 Schrijf de conclusie in de context
+
+Antwoord:
+
+## Opdracht C: kritisch kijken
+
+### 5.12 De dataset bevat alle county's van vijf staten. Is dat een aselecte steekproef van Amerikaanse county's? Wat betekent dat voor je conclusies bij A en B?
+
+Antwoord:
+
+### 5.13 Doe de t-toets uit deel 2 opnieuw, maar nu met alle 72 rijen van `kittens`. Wat gebeurt er met de P-waarde? Elke provincie komt zes keer voor: waarom is deze toets minder te vertrouwen dan die van deel 2?
+
+```{r oefening_kittens}
+
+```
+
+Antwoord:
